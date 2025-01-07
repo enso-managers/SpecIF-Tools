@@ -4,7 +4,7 @@
 	(C)copyright enso managers gmbh (http://enso-managers.de)
 	Author: se@enso-managers.de, Berlin
 	License and terms of use: Apache 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-	We appreciate any correction, comment or contribution as Github issue (https://github.com/GfSE/SpecIF-Viewer/issues)
+	We appreciate any correction, comment or contribution as Github issue (https://github.com/enso-managers/SpecIF-Tools/issues)
 */
 
 interface IModule {
@@ -181,6 +181,7 @@ class Browser {
 		if( !this.supportsHtml5Storage ) console.info( "Browser does not support HTML5 Storage" ); */
 	}
 	isIE():boolean {
+		// Check the browser type, the first test is true for IE <= 10, the second for IE 11.
 		return /MSIE |rv:11.0/i.test(navigator.userAgent);
 	}
 }
@@ -214,7 +215,7 @@ var app:IApp,
 		// identify browser capabilities:
 		browser = new Browser();
 
-		// Check the browser type, the first test is true for IE <= 10, the second for IE 11.
+		// Check the browser type:
 		if( browser.isIE() ) {
 			let txt = 'Stopping: The web-browser Internet Explorer is not supported.';
 			console.error(txt);
@@ -235,13 +236,15 @@ var app:IApp,
 		// init phase 2: the following must be loaded and accessible before any other modules can be loaded:
 		function init2():void {
 //			console.debug('init2',opts);
-			// mainCSS must be loaded definitively after bootstrap
+			// mainCSS is loaded after all modules (further down)
 			let modL = ['helper', 'ioOntology', 'standards', "xSpecif"];
 			if( CONFIG.convertMarkdown ) modL.push('markdown');
 			loadL(modL,
 				{
 					done: () => {
 						// Create and initialize the app,
+						// finally moduleManager.load() is called:
+						// @ts-ignore
 						app = window['SpecifApp']() as IApp;
 
 						// Add a global spinner with state control;
@@ -572,17 +575,12 @@ var app:IApp,
 				case "zip":					getScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'); return true;
 				case "jsonSchema":			getScript('https://cdnjs.cloudflare.com/ajax/libs/ajv/4.11.8/ajv.min.js'); return true;
 			//	case "jsonSchema":			getScript( 'https://cdnjs.cloudflare.com/ajax/libs/ajv/8.6.1/ajv2019.min.js'); return true;
-			//	case "excel":				getScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'); return true;
-				case "excel":		//		loadModule('toXlsx');
-									//		getScript('https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js'); return true; .. works!
-									//		getScript('https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js'); return true;
-											getScript('https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js'); return true;
+				case "excel":				getScript('https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js'); return true;
 									/*		import('https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.mjs')
 												.then(XLSX => {
 													console.debug('xlsx', XLSX);
 													setReady(mod);
 												}); */
-			//	case "bpmnViewer":			getScript('https://unpkg.com/bpmn-js@17.2.2/dist/bpmn-viewer.production.min.js'); return true;
 				case "bpmnViewer":			getScript('https://unpkg.com/bpmn-js@17.9.2/dist/bpmn-viewer.production.min.js'); return true;
 				case "graphViz":			getScript('https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.6/standalone/umd/vis-network.min.js');
 										//  ... has a breaking change:
@@ -619,11 +617,9 @@ var app:IApp,
 					return true;
 				case "standards": getScript(loadPath + 'modules/standards.js'); return true;
 				case 'ioOntology': getScript(loadPath + 'modules/ioOntology.js'); return true;
-			//	case "Ontology": getOntology(); return true;
 				case "helperTree": getScript(loadPath + 'modules/helperTree.js'); return true;
 				case "xSpecif": getScript(loadPath + 'modules/xSpecif.js'); return true;
 				case "cache":
-			//		loadModule("Ontology");
 								// the loading of fileSaver is attached here for all exports:
 								loadModule('fileSaver');
 								getScript(loadPath + 'modules/cache.mod.js'); return true;
@@ -714,23 +710,6 @@ var app:IApp,
 				return $.ajax(settings)
 						.done(() => { setReady(module.name) })
 		}
-	/*	function getOntology() {
-			LIB.httpGet({
-				url: (window.location.href.startsWith('http') || window.location.href.endsWith('.specif.html') ?
-						CONFIG.ontologyURL
-						: '../../SpecIF/vocabulary/Ontology.specif'  // local 
-					) + "?" + new Date().toISOString(), // bust to reload from server
-				responseType: 'arraybuffer',
-				withCredentials: false,
-				done: (xhr: XMLHttpRequest) => {
-					let ont = JSON.parse(LIB.ab2str(xhr.response));
-//					console.debug('Ontology loaded: ',ont);
-					app.ontology = new COntology(ont);
-					setReady(module.name)
-				},
-				fail: LIB.stdError
-			})
-		} */
 		function loadAfterRequiredModules(mod: IModule, fn: Function): void {
 			// start the loading of the modules not before all required modules are ready:
 			if (!Array.isArray(mod.requires) || LIB.containsAllStrings( self.ready, mod.requires ))
@@ -759,7 +738,7 @@ var app:IApp,
 		// Execute 'callWhenReady()', if/when the last registered module is ready.
 		if( self.ready.indexOf(mod)<0 ) {
 			self.ready.push( mod );
-			console.info( mod+" loaded module "+self.ready.length+" of "+self.registered.length );
+			console.info("Loaded module '"+mod+"' ("+self.ready.length+" of "+self.registered.length+")." );
 		}
 		else
 			throw Error("Module '"+mod+"' cannot be set 'ready' more than once");

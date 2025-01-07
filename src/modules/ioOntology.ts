@@ -3,7 +3,7 @@
     (C)copyright enso managers gmbh (http://enso-managers.de)
     License and terms of use: Apache 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
     Author: se@enso-managers.de, Berlin
-    We appreciate any correction, comment or contribution as Github issue (https://github.com/GfSE/SpecIF-Viewer/issues)
+    We appreciate any correction, comment or contribution as Github issue (https://github.com/enso-managers/SpecIF-Tools/issues)
 */
 
 
@@ -97,7 +97,8 @@ class COntology {
 
         // Keep only the nodes having a property of "dcterms:type" with value "W3C:Ontology";
         // there is a side-effect on the data handed-in, but in case of the SpecIF Viewer/Editor, this isn't harmful.
-        this.data.nodes = (dta.nodes).filter(
+        // 'dta.hierarchies' applies to ontologies using SpecIF v1.1. 
+        this.data.nodes = (dta.nodes || dta.hierarchies).filter(
             (n: SpecifNode) => {
                 let r = LIB.itemByKey(dta.resources, n.resource);
                 return this.valueByTitle(r, CONFIG.propClassType) == CONFIG.resClassOntology;

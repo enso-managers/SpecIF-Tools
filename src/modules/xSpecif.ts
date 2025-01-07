@@ -3,7 +3,7 @@
 	(C)copyright enso managers gmbh (http://enso-managers.de)
 	Author: se@enso-managers.de, Berlin
 	License and terms of use: Apache 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-	We appreciate any correction, comment or contribution as Github issue (https://github.com/GfSE/SpecIF-Viewer/issues)
+	We appreciate any correction, comment or contribution as Github issue (https://github.com/enso-managers/SpecIF-Tools/issues)
 */
 
 class CSpecifItemNames {
@@ -25,7 +25,7 @@ class CSpecifItemNames {
 	frct: string;
 	minI: string;
 	maxI: string;
-	constructor(ver?: string) {
+	constructor(ver: string) {
 		switch (ver) {
 			/* still some mapping needed for the versions 0.9.x ..
 			 * - attribute --> property
@@ -362,6 +362,7 @@ class CSpecIF implements SpecIF {
 		if (spD.createdBy) {
 			this.createdBy = spD.createdBy;
 			if (spD.createdBy.email && spD.createdBy.email.value)
+				// @ts-ignore - that's why we ask ...
 				this.createdBy.email = spD.createdBy.email.value;
 		};
 		if (spD.createdAt) this.createdAt = LIB.addTimezoneIfMissing(spD.createdAt);
@@ -950,6 +951,7 @@ class CSpecIF implements SpecIF {
 								console.warn('Unknown boolean value ' + LIB.cleanValue(val) + ' skipped.');
 								break;
 							case XsDataType.ComplexType:
+								// @ts-ignore - sequence is defined in this case as checked by the schema
 								if (Array.isArray(val) && dT.sequence.length == val.length)
 									return val.map(
 										// no need to transform or repair any older value:
@@ -1193,6 +1195,7 @@ class CSpecIF implements SpecIF {
 					f2ext(f)
 						.then(
 							(oF: SpecifFile) => {
+								// @ts-ignore - files is defined by makeTemplate
 								spD.files.push(oF);
 								if (--pend < 1) finalize();
 							},
@@ -1511,17 +1514,6 @@ class CSpecIF implements SpecIF {
 							//							console.debug('f2ext',iE,opts)
 
 							if (!opts || !opts.allDiagramsAsImage || CONFIG.imgTypes.includes(iE.type)) {
-								/*	var oE: SpecifFile = {
-										id: iE.id,
-										title: iE.title,
-										type: iE.type,
-										changedAt: iE.changedAt
-									};
-									if (iE.revision) oE.revision = iE.revision;
-									if (iE.changedBy) oE.changedBy = iE.changedBy;
-									if (iE.blob) oE.blob = iE.blob;
-									if (iE.dataURL) oE.dataURL = iE.dataURL;
-									resolve(oE); */
 								resolve(iE);
 							}
 							else {

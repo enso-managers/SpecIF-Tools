@@ -3,7 +3,7 @@
 	Copyright enso managers gmbh (http://enso-managers.de)
 	Author: se@enso-managers.de, Berlin
 	License and terms of use: Apache 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-	We appreciate any correction, comment or contribution as Github issue (https://github.com/GfSE/SpecIF-Viewer/issues)
+	We appreciate any correction, comment or contribution as Github issue (https://github.com/enso-managers/SpecIF-Tools/issues)
 */
 
 // Importing modules must implement the following interface:
@@ -17,10 +17,14 @@ moduleManager.construct({
 }, function(self:IModule) {
 
 	// The modes for selection when an import is encountered which is already loaded:
-	const importModes = [{
-			id: 'transform',
+	const actions = [{
+			id: 'reqif',
 			title: "Download ReqIF",
 			desc: 'Transform and download a ReqIF ZIP-container'
+	/*	}, {
+			id: 'specif',
+			title: "Download SpeciIF",
+			desc: 'Transform and download a SpecIF ZIP-container' */
 		}]; 
 
 	// The import formats
@@ -43,12 +47,12 @@ moduleManager.construct({
 		}];
 
 	self.projectName = '';  // user input for project name
-	self.format = undefined;
+	self.importFormat = undefined;
+	self.exportFormat = undefined;
 	var showFileSelect: State,
-		importMode = { id: 'replace' },
 		myFullName = 'app.' + self.loadAs,
 		urlP: any,				// the latest URL parameters
-		urlOntology = (window.location.href.startsWith('http') || window.location.href.endsWith('.specif.html') ?
+		urlOntology = (window.location.href.startsWith('http') ?
 			CONFIG.ontologyURL
 			: '../../../SpecIF/vocabulary/Ontology.specif'  // local 
 		),
@@ -101,10 +105,10 @@ moduleManager.construct({
 				+		'<div id="modeSelector" class="btn-group mt-1" style="margin: 0 0 0.4em 0" >'
 				+	function() {
 						let btns = '';
-						importModes.forEach( 
-							(b) => { 
+						actions.forEach( 
+							(a) => { 
 								// @ts-ignore - desc is only used if existent
-								btns += '<button id="' + b.id + 'Btn" onclick="' + myFullName + '.importLocally(\'' + b.id + '\')"'+ (b.desc? ' data-toggle="popover" title="' + b.desc +'"':'')+' type="button" class="btn btn-primary text-nowrap">'+b.title+'</button>'
+								btns += '<button id="' + a.id + 'Btn" onclick="' + myFullName + '.importLocally(\'' + a.id + '\')"'+ (a.desc? ' data-toggle="popover" title="' + a.desc +'"':'')+' type="button" class="btn btn-primary text-nowrap">'+a.title+'</button>'
 							}
 						);
 						return btns;
@@ -132,7 +136,6 @@ moduleManager.construct({
 
 		self.clear();
 		self.setFormat('specif');
-		importMode = {id:'replace'};
 		// certain GUI elements will only be shown if the user must pick a file:
 		showFileSelect = new State({
 			showWhenSet: ['.fileSelect'],
@@ -142,10 +145,17 @@ moduleManager.construct({
 	};
 	// The module entry;
 	// called by the moduleManager:
-	self.show = function( opts:any ):void {
+	self.show = function( opts?:any ):void {
 		if( !opts ) opts = {};
 		
 		$('#pageTitle').html( app.title );
+
+		// Update browser history, if it is a view change or item selection,
+		// but not navigation in the browser history (i.e. opts.urlParams is set):
+		if (!opts.urlParams)
+			setUrlParams({
+				view: self.view
+			}); 
 		
 			function getOntologyURL(uP: string): string | undefined {
 				// ToDo: check it somehow
@@ -161,10 +171,10 @@ moduleManager.construct({
 		let str = '';
 		formats.forEach( function(s) {
 			if( moduleManager.isReady(s.name) ) {
-//				console.debug('isReady',s.id,self.format);
-			//	app[s.name].init( self.format.opts );
+//				console.debug('isReady',s.id,self.importFormat);
+			//	app[s.name].init( self.importFormat.opts );
 				if( typeof(app[s.name].toSpecif)=='function' && typeof(app[s.name].verify)=='function' ) {
-					str += '<button id="formatSelector-'+s.id+'" onclick="'+myFullName+'.setFormat(\''+s.id+'\')" type="button" class="btn btn-light'+(self.format.id==s.id?' active':'')+'" data-toggle="popover" title="'+s.desc+'">'+s.label+'</button>';
+					str += '<button id="formatSelector-'+s.id+'" onclick="'+myFullName+'.setFormat(\''+s.id+'\')" type="button" class="btn btn-light'+(self.importFormat.id==s.id?' active':'')+'" data-toggle="popover" title="'+s.desc+'">'+s.label+'</button>';
 				}
 				else {
 					str += '<button disabled type="button" class="btn btn-light" data-toggle="popover" title="'+s.desc+'">'+s.label+'</button>';
@@ -185,17 +195,17 @@ moduleManager.construct({
 	
 	self.setFormat = function ( fId:string ):void {
 		if( importing || !fId ) return;
-//		console.debug('setFormat',self.format,fId);
+//		console.debug('setFormat',self.importFormat,fId);
 
-		if( typeof(self.format)=='object' && fId!=self.format.id )
-			$('#formatSelector-'+self.format.id).removeClass('active');
-		if( typeof(self.format)!='object' || fId!=self.format.id ) {
+		if( typeof(self.importFormat)=='object' && fId!=self.importFormat.id )
+			$('#formatSelector-'+self.importFormat.id).removeClass('active');
+		if( typeof(self.importFormat)!='object' || fId!=self.importFormat.id ) {
 			$('#formatSelector-'+fId).addClass('active');
-			self.format = LIB.itemById(formats,fId);
+			self.importFormat = LIB.itemById(formats,fId);
 		};
 
 		// initialize the importer:
-		app[self.format.name].init( self.format.opts );
+		app[self.importFormat.name].init( self.importFormat.opts );
 
 		// show the file name:
 		let rF = makeTextField(i18n.LblFileName,'');
@@ -203,12 +213,12 @@ moduleManager.construct({
 			// create input form for the project name:
 			rF += makeTextField(i18n.LblProjectName, self.projectName, { typ:'line', handle:myFullName + '.enableActions()' });
 
-		$('#helpImport').html( self.format.help ); 
+		$('#helpImport').html( self.importFormat.help ); 
 		$("#formNames").html( rF );
 
 		$("#fileSelectBtn").html(
 			  '<span>' + i18n.BtnFileSelect + '</span>'
-			+ '<input id="importFile" type="file" accept="'+self.format.extensions.toString()+'" onchange="' + myFullName + '.pickFiles()" />'
+			+ '<input id="importFile" type="file" accept="'+self.importFormat.extensions.toString()+'" onchange="' + myFullName + '.pickFiles()" />'
 		);
 
 		self.enableActions();
@@ -220,7 +230,7 @@ moduleManager.construct({
 			pnl = getTextLength(i18n.LblProjectName) > 0;
 		// it may happen that this module is initialized (and thus this routine executed), before app.projects is loaded:
 		state.cacheLoaded = typeof(app.projects)=='object' && typeof(app.projects.selected)=='object' && app.projects.selected.isLoaded();	
-		state.allValid = self.file && self.file.name.length>0 && (self.format.id!='xls' || pnl);
+		state.allValid = self.file && self.file.name.length>0 && (self.importFormat.id!='xls' || pnl);
 		setTextState(i18n.LblProjectName, pnl ? 'is-valid' : 'is-invalid');
 		return state;
 	};
@@ -229,18 +239,10 @@ moduleManager.construct({
 		
 		let state = getState();
 		try {
-		//	document.getElementById("cloneBtn").disabled =
+		/*	// @ts-ignore - .disabled is an accessible attribute
+			document.getElementById("specifBtn").disabled = */
 			// @ts-ignore - .disabled is an accessible attribute
-			document.getElementById("transformBtn").disabled = !state.allValid;
-		/*	document.getElementById("createBtn").disabled = !state.allValid || state.cacheLoaded;
-			// @ts-ignore - .disabled is an accessible attribute
-			document.getElementById("cloneBtn").disabled = true;
-			// @ts-ignore - .disabled is an accessible attribute
-			document.getElementById("updateBtn").disabled =
-			// @ts-ignore - .disabled is an accessible attribute
-			document.getElementById("adoptBtn").disabled =
-			// @ts-ignore - .disabled is an accessible attribute
-			document.getElementById("replaceBtn").disabled = !state.allValid || !state.cacheLoaded; */
+			document.getElementById("reqifBtn").disabled = !state.allValid;
 		}
 		catch (e) {
 			console.error(app.title + ": enabling actions has failed ("+e+").");
@@ -253,17 +255,10 @@ moduleManager.construct({
 		try {
 			// @ts-ignore - .disabled is an accessible attribute
 			document.getElementById("fileSelectBtn").disabled = st;
+		/*	// @ts-ignore - .disabled is an accessible attribute
+			document.getElementById("specifBtn").disabled = */
 			// @ts-ignore - .disabled is an accessible attribute
-			document.getElementById("transformBtn").disabled = st || !state.allValid || state.cacheLoaded;
-		/*	document.getElementById("createBtn").disabled = st || !state.allValid || state.cacheLoaded;
-			// @ts-ignore - .disabled is an accessible attribute
-			document.getElementById("cloneBtn").disabled = true;
-			// @ts-ignore - .disabled is an accessible attribute
-			document.getElementById("updateBtn").disabled = 
-			// @ts-ignore - .disabled is an accessible attribute
-			document.getElementById("adoptBtn").disabled =
-			// @ts-ignore - .disabled is an accessible attribute
-			document.getElementById("replaceBtn").disabled = st || !state.allValid || !state.cacheLoaded; */
+			document.getElementById("reqifBtn").disabled = st || !state.allValid || state.cacheLoaded;
 		}
 		catch (e) {
 			console.error(app.title+": setting state 'importing' has failed ("+e+").");
@@ -273,15 +268,15 @@ moduleManager.construct({
 		// @ts-ignore - .files is in fact accessible
         let f = document.getElementById("importFile").files[0];
 		// check if file-type is eligible:
-//		console.debug('pickFiles',f.name,self.format);
+//		console.debug('pickFiles',f.name,self.importFormat);
 
-		if (app[self.format.name].verify(f)) {
+		if (app[self.importFormat.name].verify(f)) {
 			self.file = f;
 			//	self.projectL.length = 0;  // https://stackoverflow.com/questions/1232040/how-do-i-empty-an-array-in-javascript
 
 			setTextValue(i18n.LblFileName, f.name);
 
-			if( self.format.id=='xls' && getTextLength(i18n.LblProjectName)<1 ) {
+			if( self.importFormat.id=='xls' && getTextLength(i18n.LblProjectName)<1 ) {
 				self.projectName = self.file.name.fileName();	// propose fileName as project name
 				setTextValue( i18n.LblProjectName, self.projectName );
 				setFocus( i18n.LblProjectName );
@@ -298,7 +293,7 @@ moduleManager.construct({
 		if( importing || !mode ) return;   // ignore further clicks while working
 		
 		setImporting( true );
-		importMode = {id:mode};
+		self.exportFormat = mode;
 		setProgress(i18n.MsgReading,10); 
 
 		getOntology(urlOntology)
@@ -307,7 +302,7 @@ moduleManager.construct({
 					app.ontology = ont;
 					self.projectName = textValue(i18n.LblProjectName);
 					//	console.debug( 'importLocally', self.projectName, self.file );
-					readFile(self.file, app[self.format.name].toSpecif);
+					readFile(self.file, app[self.importFormat.name].toSpecif);
 				}
 			)
 			.catch(noOntologyFound);
@@ -333,7 +328,7 @@ moduleManager.construct({
 				let options = {
 					projectName: self.projectName,
 					fileName: self.file.name.fileName(),
-					format: 'reqif',
+					format: self.exportFormat,
 				//	domains: [],
 					role: "SpecIF:Reader"
 				};
@@ -378,7 +373,7 @@ moduleManager.construct({
 		// import specif data as JSON:
 		if( Array.isArray( data ) ) {
 			// The first object shall be imported as selected by the user;
-			// all subsequent ones according to self.format.opts.multipleMode:
+			// all subsequent ones according to self.importFormat.opts.multipleMode:
 			// (use-case: ioReqif imports a reqifz with multiple reqif files)
 			resQ = data;
 		//	resIdx = 0;
@@ -399,45 +394,24 @@ moduleManager.construct({
 		}
 		function handle( dta:SpecIF, idx:number ):void {
 //			console.debug('handleResult',simpleClone(dta),idx);
-				setProgress(importMode.id+' project',20); 
+			setProgress('Importing',20); 
 
-				// The first object shall be imported as selected by the user --> importMode.id;
-				// all subsequent ones according to self.format.opts.multipleMode:
-				let opts: any = self.format.opts || {};
-				opts.mode = idx < 1 ? importMode.id : opts.multipleMode || 'update';
-				opts.normalizeTerms = true;  // replace terms by preferred/released ontology terms; is overridden if an ontology is imported
-				opts.deduplicate =
-				opts.addGlossary =
-				opts.addUnreferencedResources = resQ.length<1;  // do it at the end only
+			// The first object shall be imported as selected by the user --> importMode.id;
+			// all subsequent ones according to self.importFormat.opts.multipleMode:
+			let opts: any = self.importFormat.opts || {};
+		//	opts.mode = idx < 1 ? importMode.id : opts.multipleMode || 'update';
+			opts.normalizeTerms = true;  // replace terms by preferred/released ontology terms; is overridden if an ontology is imported
+			opts.deduplicate =
+		//	opts.addGlossary =
+			opts.addUnreferencedResources = resQ.length<1;  // do it at the end only
+			opts.addGlossary = false;
 
-				switch( opts.mode ) {
-				/*	case 'clone': 	
-						dta.id = LIB.genID('P-');
-						// no break
-					case 'create':
-					case 'replace':  */
-					case 'transform':
-						opts.collectProcesses = false;
-						app.projects.create( dta, opts )
-							.progress( setProgress )
-							.done( handleNext )
-							.fail( handleError );
-				/*		break;
-					case 'update':
-						opts.collectProcesses = false;
-						app.projects.selected.update(dta, opts)
-							.progress(setProgress)
-							.done( handleNext )
-							.fail( handleError );
-						break;
-					case 'adopt':
-						opts.collectProcesses = true;
-						app.projects.selected.adopt( dta, opts )
-							.progress( setProgress )
-							.done( handleNext )
-							.fail( handleError );  */
-			};
-			console.info(importMode.id + ' project ' + (dta.title? (typeof (dta.title) == 'string' ? dta.title : LIB.languageTextOf(dta.title, { targetLanguage: browser.language })) : dta.id));
+			opts.collectProcesses = false;
+			app.projects.create( dta, opts )
+				.progress( setProgress )
+				.done( handleNext )
+				.fail( handleError );
+			console.info('Importing ' + (dta.title? (typeof (dta.title) == 'string' ? dta.title : LIB.languageTextOf(dta.title, { targetLanguage: browser.language })) : dta.id));
 		};
 	}; 
 	function setProgress(msg:string,perc:number):void {
@@ -468,23 +442,23 @@ moduleManager.construct({
 	let lang = browser.language.slice(0, 2);
 	function intro() {
 		let
-			en = '<p>Transform a spreadsheet to the Requirements Interchange Format (ReqIF). The property names are expected in the first line (column head) and an entity (<span class="text-bg-light"><em>SPEC-OBJECT</em></span> in ReqIF terms) with its property values per following line.</p><p>The property names are semantically interpreted and translated using the SpecIF Ontology. For example, a property name <span class="text-bg-light"><em>Title</em></span> is first normalized to <span class="text-bg-light"><em>dcterms:title</em></span> and then mapped to <span class="text-bg-light"><em>ReqIF.Name</em></span>.</p><p>For instructions, please refer to the <a href="https://enso-managers.de/tools/manual-sheet2reqif.html" target="_blank">Manual Sheet → ReqIF</a>.</p>',
-			de = '<p>Umwandeln einer Kalkulationstabelle in das Requirements Interchange Format (ReqIF). Die Attributnamen werden in der ersten Zeile (Spaltenkopf) erwartet und eine Entität (<span class="text-bg-light"><em>SPEC-OBJECT</em></span> gemäß ReqIF) mit ihren Attributwerten pro folgender Zeile.</p><p>Die Attributnamen werden semantisch interpretiert und mit Hilfe der SpecIF-Ontologie übersetzt. Zum Beispiel wird ein Attributname <span class="text-bg-light"><em>Titel</em></span> zunächst auf <span class="text-bg-light"><em>dcterms:title</em></span> normalisiert und dann auf <span class="text-bg-light"><em>ReqIF.Name</em></span> abgebildet.</p><p>Eine Anleitung ist (in englischer Sprache) im <a href="https://enso-managers.de/tools/manual-sheet2reqif.html" target="_blank">Manual Sheet → ReqIF</a> zu finden.</p>',
-			fr = '<p>Transformer une feuille de calcul en format d\'échange d\'exigences (ReqIF). Les noms des propriétés sont attendus sur la première ligne (tête de colonne) et une entité (<span class="text-bg-light"><em>SPEC-OBJECT</em></span> en termes de ReqIF) avec ses valeurs de propriétés par ligne suivante.</p><p>Les noms de propriétés sont interprétés sémantiquement et traduits à l\'aide de l\'ontologie SpecIF. Par exemple, un nom de propriété <span class="text-bg-light"><em>Titre</em></span> est d\'abord normalisé en <span class="text-bg-light"><em>dcterms:title</em></span>, puis remplacé par <span class="text-bg-light"><em>ReqIF.Name</em></span>.</p><p>Pour les instructions, veuillez consulter le <a href="https://enso-managers.de/tools/manual-sheet2reqif.html" target="_blank">Manual Sheet → ReqIF</a> (en anglais).</p>';
+			en = '<p>Transform a spreadsheet to the Requirements Interchange Format (ReqIF). The property names are expected in the first line (column head) and an entity (<span class="text-bg-light"><em>SPEC-OBJECT</em></span> in ReqIF terms) with its property values per following line.</p><p>The property names are semantically interpreted and translated using the <a href="https://specif.de/apps/edit.html#import=https://specif.de/v1.1/Ontology.specif" target="_blank">SpecIF Ontology</a>. For example, a property name <span class="text-bg-light"><em>Title</em></span> is first normalized to <span class="text-bg-light"><em>dcterms:title</em></span> and then mapped to <span class="text-bg-light"><em>ReqIF.Name</em></span>.</p><p>For instructions, please refer to the <a href="https://enso-managers.de/tools/intro-sheet2reqif.html" target="_blank">Introduction to Sheet → ReqIF</a>.</p>',
+			de = '<p>Wandeln einer Kalkulationstabelle in das Requirements Interchange Format (ReqIF). Die Attributnamen werden in der ersten Zeile (Spaltenkopf) erwartet und eine Entität (<span class="text-bg-light"><em>SPEC-OBJECT</em></span> gemäß ReqIF) mit ihren Attributwerten pro folgender Zeile.</p><p>Die Attributnamen werden semantisch interpretiert und mit Hilfe der <a href="https://specif.de/apps/edit.html#import=https://specif.de/v1.1/Ontology.specif" target="_blank">SpecIF Ontology</a> übersetzt. Zum Beispiel wird ein Attributname <span class="text-bg-light"><em>Titel</em></span> zunächst zu <span class="text-bg-light"><em>dcterms:title</em></span> normalisiert und dann auf <span class="text-bg-light"><em>ReqIF.Name</em></span> abgebildet.</p><p>Eine Anleitung (in englischer Sprache) ist in <a href="https://enso-managers.de/tools/intro-sheet2reqif.html" target="_blank">Introduction to Sheet → ReqIF</a> zu finden.</p>',
+			fr = '<p>Transformer une feuille de calcul en format d\'échange d\'exigences (ReqIF). Les noms des propriétés sont attendus sur la première ligne (tête de colonne) et une entité (<span class="text-bg-light"><em>SPEC-OBJECT</em></span> en termes de ReqIF) avec ses valeurs de propriétés par ligne suivante.</p><p>Les noms de propriétés sont interprétés sémantiquement et traduits à l\'aide de <a href="https://specif.de/apps/edit.html#import=https://specif.de/v1.1/Ontology.specif" target="_blank">l\'ontologie SpecIF</a>. Par exemple, un nom de propriété <span class="text-bg-light"><em>Titre</em></span> est d\'abord normalisé en <span class="text-bg-light"><em>dcterms:title</em></span>, puis remplacé par <span class="text-bg-light"><em>ReqIF.Name</em></span>.</p><p>Pour les instructions, veuillez consulter <a href="https://enso-managers.de/tools/intro-sheet2reqif.html" target="_blank">Introduction to Sheet → ReqIF</a> (en anglais).</p>';
 		return (lang == 'de' ? de : (lang == 'fr' ? fr : en));
 	}
 	function donate() {
 		let
-			en = '<p>If this service is of value to you, would you like to make a donation?</p><p>You support further development of transformations and model integration to improve collaboration over the whole product lifecycle, see <a href="https://cascade.gfse.org" target="_blank">Project CASCaDE</a>.</p>',
-			de = '<p>Wenn dieser Dienst für Sie von Nutzen ist, wollen Sie etwas spenden?</p><p>Sie unterstützen die weitere Entwicklung von Transformationen und Modellintegration zur Verbesserung der Zusammenarbeit im gesamten Produktlebenszyklus, siehe <a href="https://cascade.gfse.org" target="_blank">Projekt CASCaDE</a>.</p>',
-			fr = '<p>Si ce service vous est utile, souhaitez-vous faire un don?</p><p>Vous soutenez la poursuite du développement des transformations et de l\'intégration des modèles pour améliorer la collaboration tout au long du cycle de vie du produit, voir <a href="https://cascade.gfse.org" target="_blank">Projekt CASCaDE</a>.</p>';
+			en = '<p>Is this service of value to you, would you like to make a donation?</p><p>You support further development of transformations and model integration to improve collaboration over the whole product lifecycle, see <a href="https://cascade.gfse.org" target="_blank">Project CASCaDE</a>.</p>',
+			de = '<p>Ist dieser Dienst für Sie von Nutzen, wollen Sie etwas spenden?</p><p>Sie unterstützen die weitere Entwicklung von Transformationen und Modellintegration zur Verbesserung der Zusammenarbeit im gesamten Produktlebenszyklus, siehe <a href="https://cascade.gfse.org" target="_blank">Projekt CASCaDE</a>.</p>',
+			fr = '<p>Ce service vous est-il utile, souhaitez-vous faire un don?</p><p>Vous soutenez la poursuite du développement des transformations et de l\'intégration des modèles pour améliorer la collaboration tout au long du cycle de vie du produit, voir <a href="https://cascade.gfse.org" target="_blank">Projekt CASCaDE</a>.</p>';
 		return '<div style="float: left; margin: 6px 9px 0 0;" > <iframe src="https://github.com/sponsors/enso-managers/button" title = "Sponsor enso-managers" height = "32" width = "114" style = "border: 0; border-radius: 6px;" > </iframe></div >'
 			+ (lang=='de'? de : (lang == 'fr'? fr : en));
 	}
 
 /*	self.abort = function():void {
 		console.info('abort pressed');
-		app[self.format.name].abort();
+		app[self.importFormat.name].abort();
 		app.projects.selected.abort();
 	}; */
 	return self;

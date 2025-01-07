@@ -3,7 +3,7 @@
     (C)copyright enso managers gmbh (http://enso-managers.de)
     Author: se@enso-managers.de, Berlin
     License and terms of use: Apache 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-    We appreciate any correction, comment or contribution as Github issue (https://github.com/GfSE/SpecIF-Viewer/issues)
+    We appreciate any correction, comment or contribution as Github issue (https://github.com/enso-managers/SpecIF-Tools/issues)
 
      Attention:
     - Do NOT minify this module with the Google Closure Compiler. At least the RegExp in toJsId() will be modified to yield wrong results, e.g. falsely replaces 'u' by '_'.
@@ -2138,14 +2138,6 @@ function simpleClone(o: any): any {
     // here, only a 'function' or a 'null' value should arrive ... returning 'undefined'
 }
 
-function hasUrlParams(): boolean {
-    let p = document.URL.split('#');
-    return (!!p[1] && p[1].length > 0);
-    /*    ( p[1] && p[1].length>0 ) return '#';
-        p = document.URL.split('?');   no queries, yet
-        if( p[1] && p[1].length>0 ) return '?';
-        return false; */
-}
 // ToDo: try prms = location.hash
 // see: https://www.w3schools.com/jsref/prop_loc_hash.asp
 function getUrlParams(opts?: any): any {
@@ -2211,6 +2203,15 @@ function setUrlParams(actSt: any): void {
     // update the browser history:
     history.pushState('', '', newParams);
 }
+/*
+function hasUrlParams(): boolean {
+    let p = document.URL.split('#');
+    return (!!p[1] && p[1].length > 0);
+    //    ( p[1] && p[1].length>0 ) return '#';
+    //    p = document.URL.split('?');   no queries, yet
+    //    if( p[1] && p[1].length>0 ) return '?';
+    //    return false;
+}
 function clearUrlParams(): void {
     if (!browser.supportsHtml5History || !hasUrlParams()) return;
 
@@ -2218,7 +2219,6 @@ function clearUrlParams(): void {
     //    console.debug( 'clearUrlParams', path );
     history.pushState('', '', path[path.length - 1]);    // last element is 'appname.html' without url parameters;
 }
-/*
 class CUrlParams {
 //    uid?: string;
     import?: string;
