@@ -36,14 +36,16 @@ For any purpose other than demonstration please install the latest [release](htt
 on a web server of your choice. Just unpack the files and load 'yourPath/view' or 'yourPath/edit' with a web-browser.
 
 ## Running the App Locally
-First, make sure you have NodeJS and NPM installed.
+1. Make sure you have NodeJS and NPM installed.
 
-Then, install all dependencies:
+2. Clone this repository.
+
+3. Install all dependencies:
 ```bash
   npm install
 ```
 
-After installing all dependencies, run the build script:
+4. Run the build script:
 ```bash
   npm run start
 ```
@@ -55,9 +57,9 @@ After creating the build directory with the executables, you may start the local
   http-server
 ```
 
-- Then, navigate to localhost -> build -> view.html to open the SpecIF Viewer 
-- Temporarily deactivate ```Cross-Origin Restrictions``` and ```Local File Restrictions``` in your browser, if you encounter a blank screen.
+- Not recommended: Temporarily deactivate ```Cross-Origin Restrictions``` and ```Local File Restrictions``` in your browser, if you encounter a blank screen.
 Make sure to re-activate these settings, later.
+- Better: Copy the content of the folder 'dist' to /inetpub/wwwroot/your-subfolder/ and navigate to 'localhost/your-subfolder/' using your web-browser. 
 
 ## Acknowledgements
 This work has been sponsored by [enso-managers gmbh](http://enso-managers.de) and [adesso SE](http://adesso.de), both Berlin.
